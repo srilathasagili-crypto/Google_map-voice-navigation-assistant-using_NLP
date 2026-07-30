@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Trained model artifacts (regenerated via python intent_classifier.py)
+models/*.pkl
+
+# Streamlit
+.streamlit/
+
+# OS/editor junk
+.DS_Store
+.vscode/
+*.log

@@ -1,0 +1,9 @@
+nltk
+scikit-learn
+pandas
+joblib
+requests
+SpeechRecognition
+pyttsx3
+gTTS
+streamlit

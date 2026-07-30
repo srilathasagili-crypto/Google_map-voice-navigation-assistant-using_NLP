@@ -1,0 +1,281 @@
+text,intent
+can you find a grocery store close to me,search_nearby
+where can i find a coffee shop nearby,search_nearby
+is there a hospital close by,search_nearby
+please navigate to jubilee hills,navigate
+avoid the highway,route_preference
+any traffic jams on the way,traffic_info
+make sure to take a route without traffic,route_preference
+plot a route to the bus stop,navigate
+i want to take the route with least traffic,route_preference
+get me to the temple,navigate
+where's the nearest petrol pump,search_nearby
+find nearest parking,search_nearby
+exit navigation,cancel
+show nearby grocery store,search_nearby
+route to the city center,navigate
+show nearby medical store,search_nearby
+search for cafe nearby,search_nearby
+locate the nearest gas station,search_nearby
+i'd prefer to avoid the highway,route_preference
+take me to hitech city,navigate
+stop directions,cancel
+show me where i am on the map,current_location
+i want to go to hyderabad railway station,navigate
+find a cafe near me,search_nearby
+i need a coffee shop nearby,search_nearby
+start navigation to the temple,navigate
+use driving directions only,route_preference
+can you avoid the highway,route_preference
+i'd prefer to avoid toll roads,route_preference
+i'd prefer to switch to public transport route,route_preference
+navigate to the stadium,navigate
+route to the hotel,navigate
+show me the way to hitech city,navigate
+i want to go to the bus stop,navigate
+give me a traffic report,traffic_info
+i need a atm nearby,search_nearby
+navigate to the hotel,navigate
+where's the nearest supermarket,search_nearby
+switch to public transport route,route_preference
+locate the nearest supermarket,search_nearby
+where's the nearest fuel station,search_nearby
+what's the traffic situation,traffic_info
+let's go to the office park,navigate
+is there heavy traffic on this route,traffic_info
+take me to gachibowli,navigate
+let's go to banjara hills,navigate
+make sure to avoid tolls,route_preference
+is there a medical store close by,search_nearby
+how's the road looking right now,traffic_info
+let's go to my college,navigate
+i'm looking for a grocery store nearby,search_nearby
+stop giving directions,cancel
+i want to give me the quickest way,route_preference
+start navigation to my home,navigate
+i want to go to the nearest mall,navigate
+let's go to my home,navigate
+take me to the railway station,navigate
+find a supermarket near me,search_nearby
+i need to reach hitech city,navigate
+can you find a hospital close to me,search_nearby
+i need a hospital nearby,search_nearby
+i want directions to the bus stop,navigate
+i'm looking for a petrol pump nearby,search_nearby
+show nearby cash machine,search_nearby
+quit navigation,cancel
+use the scenic route,route_preference
+find a parking near me,search_nearby
+can you find a pharmacy close to me,search_nearby
+where can i find a hospital nearby,search_nearby
+can you use driving directions only,route_preference
+i want to avoid the highway,route_preference
+make sure to avoid the highway,route_preference
+show me nearby coffee shop,search_nearby
+where can i find a parking lot nearby,search_nearby
+locate me right now,current_location
+search for clinic nearby,search_nearby
+plot a route to connaught place,navigate
+cancel the navigation,cancel
+head to the hotel,navigate
+can you prefer the route with no highways,route_preference
+can you take the fastest route,route_preference
+please avoid toll roads,route_preference
+can you find a clinic close to me,search_nearby
+tell me about current traffic,traffic_info
+display my location,current_location
+find a coffee shop near me,search_nearby
+let's go to mg road,navigate
+i'd prefer to prefer walking directions,route_preference
+plot a route to the temple,navigate
+search for restaurant nearby,search_nearby
+show me the way to central park,navigate
+can you take me to the beach,navigate
+i want directions to the office park,navigate
+i want to take a route without traffic,route_preference
+will i hit traffic on this route,traffic_info
+what location am i at,current_location
+please use driving directions only,route_preference
+show current position,current_location
+head to the airport,navigate
+i want directions to the temple,navigate
+plot a route to the airport,navigate
+any grocery store around here,search_nearby
+navigate to hyderabad railway station,navigate
+let's go to hyderabad railway station,navigate
+can you find a gas station close to me,search_nearby
+how do i get to the beach,navigate
+route to hitech city,navigate
+where am i right now,current_location
+what is the traffic like ahead,traffic_info
+what's my location right now,current_location
+i'd prefer to avoid tolls,route_preference
+get me to the city center,navigate
+can you find a atm close to me,search_nearby
+get me to central park,navigate
+can you take me to central park,navigate
+nearest medical store please,search_nearby
+find nearest petrol pump,search_nearby
+stop the navigation now,cancel
+i need to reach my friend's house,navigate
+take me to my college,navigate
+is the road busy,traffic_info
+show me nearby fuel station,search_nearby
+where exactly am i,current_location
+where am i currently,current_location
+can you avoid toll roads,route_preference
+where is the closest grocery store,search_nearby
+any parking around here,search_nearby
+can you take me to my friend's house,navigate
+cancel my trip,cancel
+where's the nearest ev charging station,search_nearby
+check the current traffic status,traffic_info
+find nearest restaurant,search_nearby
+show me the way to the bus stop,navigate
+check traffic conditions,traffic_info
+i want directions to secunderabad,navigate
+is there a cafe close by,search_nearby
+prefer walking directions,route_preference
+tell me where i currently am,current_location
+search for pharmacy nearby,search_nearby
+where is the closest food court,search_nearby
+i need to reach the nearest mall,navigate
+guide me to banjara hills,navigate
+show me nearby food court,search_nearby
+any hospital around here,search_nearby
+i want to prefer the route with no highways,route_preference
+directions to connaught place,navigate
+find a pharmacy near me,search_nearby
+i want to use the scenic route,route_preference
+i'd prefer to prefer the shortest path,route_preference
+find nearest bank,search_nearby
+i'd prefer to give me the quickest way,route_preference
+i want to cancel this route,cancel
+take me to secunderabad,navigate
+i want to use driving directions only,route_preference
+head to the railway station,navigate
+find a ev charging station near me,search_nearby
+find charging point near my location,search_nearby
+i want to know my current location,current_location
+make sure to prefer the route with no highways,route_preference
+i need a parking nearby,search_nearby
+head to my office,navigate
+turn off navigation,cancel
+i want to go to charminar,navigate
+any delays on my route,traffic_info
+get me to gachibowli,navigate
+where is the closest petrol pump,search_nearby
+i need to reach the metro station,navigate
+where can i find a clinic nearby,search_nearby
+how long will the traffic delay be,traffic_info
+i need a pharmacy nearby,search_nearby
+i need a bank nearby,search_nearby
+i need a medical store nearby,search_nearby
+find food court near my location,search_nearby
+please navigate to secunderabad,navigate
+i want to go to the city center,navigate
+find a medical store near me,search_nearby
+i'm looking for a bank nearby,search_nearby
+where is the closest restaurant,search_nearby
+stop navigation,cancel
+route to banjara hills,navigate
+how congested is it right now,traffic_info
+how busy is the road right now,traffic_info
+please take the fastest route,route_preference
+is the highway congested,traffic_info
+i want to go to secunderabad,navigate
+avoid highways for this route,route_preference
+is there a coffee shop close by,search_nearby
+can you find a food court close to me,search_nearby
+show me the way to my college,navigate
+directions to the city center,navigate
+guide me to the metro station,navigate
+how do i get to my home,navigate
+nearest cafe please,search_nearby
+navigate to mg road,navigate
+traffic update please,traffic_info
+is there a grocery store close by,search_nearby
+route to my office,navigate
+where can i find a gas station nearby,search_nearby
+how do i get to the market,navigate
+i want to take the fastest route,route_preference
+show me nearby supermarket,search_nearby
+where is the closest fuel station,search_nearby
+is there a cash machine close by,search_nearby
+please navigate to the metro station,navigate
+search for grocery store nearby,search_nearby
+i'd prefer to take a route without traffic,route_preference
+i want directions to connaught place,navigate
+cancel this route,cancel
+where can i find a restaurant nearby,search_nearby
+let's go to the beach,navigate
+any pharmacy around here,search_nearby
+prefer the route with no highways,route_preference
+show nearby parking,search_nearby
+avoid tolls,route_preference
+is there a jam ahead,traffic_info
+end the trip,cancel
+can you take me to the airport,navigate
+can you give me the quickest way,route_preference
+directions to the bus stop,navigate
+plot a route to jubilee hills,navigate
+please use the scenic route,route_preference
+navigate to jubilee hills,navigate
+make sure to use driving directions only,route_preference
+i want directions to downtown,navigate
+end navigation please,cancel
+nearest parking please,search_nearby
+can you take me to mg road,navigate
+i'm looking for a ev charging station nearby,search_nearby
+set destination to the stadium,navigate
+what is my current location,current_location
+tell me my current position,current_location
+i'd prefer to take the route with least traffic,route_preference
+i'm looking for a medical store nearby,search_nearby
+search for parking lot nearby,search_nearby
+is there a atm close by,search_nearby
+take a route without traffic,route_preference
+please take the route with least traffic,route_preference
+i want directions to my friend's house,navigate
+please switch to public transport route,route_preference
+make sure to avoid highways for this route,route_preference
+nearest gas station please,search_nearby
+i want to go to my home,navigate
+show nearby gas station,search_nearby
+make sure to switch to public transport route,route_preference
+find a charging point near me,search_nearby
+guide me to the stadium,navigate
+how is the traffic right now,traffic_info
+show me the way to jubilee hills,navigate
+guide me to the bus stop,navigate
+directions to downtown,navigate
+plot a route to mg road,navigate
+find a petrol pump near me,search_nearby
+can you tell me where i am,current_location
+search for bank nearby,search_nearby
+pinpoint my current location,current_location
+i'd prefer to use the scenic route,route_preference
+show me the way to the hotel,navigate
+cancel current route,cancel
+start navigation to the hotel,navigate
+let's go to secunderabad,navigate
+search for parking nearby,search_nearby
+i want directions to jubilee hills,navigate
+guide me to gachibowli,navigate
+can you find a fuel station close to me,search_nearby
+any clinic around here,search_nearby
+nearest supermarket please,search_nearby
+route to the stadium,navigate
+plot a route to gachibowli,navigate
+i need a cafe nearby,search_nearby
+please prefer the route with no highways,route_preference
+any supermarket around here,search_nearby
+please avoid the highway,route_preference
+take the fastest route,route_preference
+is traffic clear right now,traffic_info
+show my location,current_location
+is there a clinic close by,search_nearby
+please give me the quickest way,route_preference
+let's go to charminar,navigate
+search for supermarket nearby,search_nearby
+head to the nearest mall,navigate
