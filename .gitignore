@@ -7,7 +7,7 @@ venv/
 env/
 
 # Trained model artifacts (regenerated via python intent_classifier.py)
-models/*.pkl
+# models/*.pkl
 
 # Streamlit
 .streamlit/
