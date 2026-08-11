@@ -1,23 +1,3 @@
-"""
-Streamlit visual demo for the NLP Voice Navigation Assistant.
-
-Features:
-- Voice input
-- Speech-to-text
-- Text input
-- Intent classification
-- Entity extraction
-- Nominatim geocoding
-- OSRM driving directions
-- Interactive Folium map
-- Distance and travel time
-- Turn-by-turn directions
-- Text-to-speech
-
-Run:
-    streamlit run app.py
-"""
-
 import io
 
 import streamlit as st
@@ -42,6 +22,17 @@ st.set_page_config(
 
 
 # ============================================================
+# SESSION STATE
+# ============================================================
+
+if "user_text" not in st.session_state:
+    st.session_state.user_text = None
+
+if "result" not in st.session_state:
+    st.session_state.result = None
+
+
+# ============================================================
 # LOAD PIPELINE
 # ============================================================
 
@@ -59,10 +50,6 @@ def load_pipeline(mock_maps: bool):
 
 def transcribe_audio(audio_bytes: bytes) -> str:
 
-    """
-    Convert recorded microphone audio into text.
-    """
-
     recognizer = sr.Recognizer()
 
     try:
@@ -71,13 +58,9 @@ def transcribe_audio(audio_bytes: bytes) -> str:
             io.BytesIO(audio_bytes)
         ) as source:
 
-            audio = recognizer.record(
-                source
-            )
+            audio = recognizer.record(source)
 
-        return recognizer.recognize_google(
-            audio
-        )
+        return recognizer.recognize_google(audio)
 
     except sr.UnknownValueError:
 
@@ -106,10 +89,6 @@ def transcribe_audio(audio_bytes: bytes) -> str:
 
 def text_to_speech_bytes(text: str) -> bytes:
 
-    """
-    Convert assistant response into MP3 audio.
-    """
-
     buffer = io.BytesIO()
 
     tts = gTTS(
@@ -117,9 +96,7 @@ def text_to_speech_bytes(text: str) -> bytes:
         lang="en"
     )
 
-    tts.write_to_fp(
-        buffer
-    )
+    tts.write_to_fp(buffer)
 
     buffer.seek(0)
 
@@ -127,72 +104,32 @@ def text_to_speech_bytes(text: str) -> bytes:
 
 
 # ============================================================
-# DRAW NAVIGATION MAP
+# DISPLAY NAVIGATION MAP
 # ============================================================
 
 def display_route_map(route):
 
-    """
-    Display the actual driving route returned by OSRM.
-
-    route_points format:
-
-        [
-            [latitude, longitude],
-            [latitude, longitude],
-            ...
-        ]
-    """
-
     if not route:
-
         return
-
-
-    # ========================================================
-    # ROUTE POINTS
-    # ========================================================
 
     route_points = route.get(
         "route_points",
         []
     )
 
-
     if not route_points:
 
-        st.info(
-            "No road route geometry is available."
+        st.warning(
+            "No road route geometry was returned."
         )
 
         return
 
+    start_lat = route.get("start_lat")
+    start_lon = route.get("start_lon")
 
-    # ========================================================
-    # START COORDINATES
-    # ========================================================
-
-    start_lat = route.get(
-        "start_lat"
-    )
-
-    start_lon = route.get(
-        "start_lon"
-    )
-
-
-    # ========================================================
-    # DESTINATION COORDINATES
-    # ========================================================
-
-    end_lat = route.get(
-        "end_lat"
-    )
-
-    end_lon = route.get(
-        "end_lon"
-    )
-
+    end_lat = route.get("end_lat")
+    end_lon = route.get("end_lon")
 
     if (
         start_lat is None
@@ -219,7 +156,7 @@ def display_route_map(route):
             start_lon
         ],
 
-        zoom_start=11,
+        zoom_start=10,
 
         control_scale=True
     )
@@ -237,11 +174,11 @@ def display_route_map(route):
         ],
 
         popup=(
-            "<b>📍 Start Location</b><br>"
+            "<b>📍 Start</b><br>"
             f"{route.get('origin', 'Starting Point')}"
         ),
 
-        tooltip="📍 Start",
+        tooltip="Start",
 
         icon=folium.Icon(
             color="green",
@@ -269,10 +206,7 @@ def display_route_map(route):
             f"{route.get('destination', 'Destination')}"
         ),
 
-        tooltip=(
-            f"🏁 "
-            f"{route.get('destination', 'Destination')}"
-        ),
+        tooltip="Destination",
 
         icon=folium.Icon(
             color="red",
@@ -285,7 +219,7 @@ def display_route_map(route):
 
 
     # ========================================================
-    # DRAW ACTUAL DRIVING ROUTE
+    # DRAW ROAD ROUTE
     # ========================================================
 
     folium.PolyLine(
@@ -298,7 +232,7 @@ def display_route_map(route):
 
         opacity=0.8,
 
-        tooltip="🚗 Driving Route"
+        tooltip="Driving Route"
 
     ).add_to(
         navigation_map
@@ -306,32 +240,26 @@ def display_route_map(route):
 
 
     # ========================================================
-    # FIT MAP TO ROUTE
+    # FIT MAP
     # ========================================================
 
-    try:
-
-        navigation_map.fit_bounds(
+    navigation_map.fit_bounds(
+        [
             [
-                [
-                    start_lat,
-                    start_lon
-                ],
+                start_lat,
+                start_lon
+            ],
 
-                [
-                    end_lat,
-                    end_lon
-                ]
+            [
+                end_lat,
+                end_lon
             ]
-        )
-
-    except Exception:
-
-        pass
+        ]
+    )
 
 
     # ========================================================
-    # DISPLAY MAP
+    # DISPLAY
     # ========================================================
 
     st_folium(
@@ -348,14 +276,8 @@ def display_route_map(route):
 # SIDEBAR
 # ============================================================
 
-st.sidebar.title(
-    "⚙️ Settings"
-)
+st.sidebar.title("⚙️ Settings")
 
-
-# ============================================================
-# MOCK MAP TOGGLE
-# ============================================================
 
 mock_mode = st.sidebar.toggle(
 
@@ -365,7 +287,7 @@ mock_mode = st.sidebar.toggle(
 
     help=(
         "OFF = real Nominatim + OSRM routing. "
-        "ON = demo/mock data."
+        "ON = mock/demo data."
     )
 )
 
@@ -373,63 +295,55 @@ mock_mode = st.sidebar.toggle(
 st.sidebar.markdown("---")
 
 
-# ============================================================
-# SUPPORTED COMMANDS
-# ============================================================
-
 st.sidebar.markdown(
-    """
-### 🎯 Supported Commands
+"""
+### Supported Commands
 
-#### 🗺️ Navigation
+**Navigation**
 
-- `navigate to Charminar`
-- `navigate to Hyderabad railway station`
-- `navigate from Vijayawada to Guntur`
-- `directions from Hyderabad to Warangal`
-- `go from Secunderabad to Charminar`
+- Navigate to Charminar
+- Navigate to Hyderabad railway station
+- Navigate from Vijayawada to Guntur
+- Directions from Hyderabad to Warangal
+- Go from Secunderabad to Charminar
 
-#### 📍 Nearby places
+**Nearby**
 
-- `find nearest hospital`
-- `find nearest ATM`
-- `find nearest restaurant`
-- `find nearest pharmacy`
+- Find nearest hospital
+- Find nearest ATM
+- Find nearest restaurant
+- Find nearest pharmacy
 
-#### 🚦 Traffic
+**Traffic**
 
-- `how is the traffic right now`
+- How is the traffic right now
 
-#### 🛣️ Route preference
+**Route preference**
 
-- `avoid tolls`
-- `take the fastest route`
+- Avoid tolls
+- Take the fastest route
 
-#### 📍 Location
+**Location**
 
-- `where am i right now`
+- Where am I right now
 
-#### ❌ Cancel
+**Cancel**
 
-- `cancel navigation`
+- Cancel navigation
 """
 )
 
 
-# ============================================================
-# MAP MODE STATUS
-# ============================================================
-
 if mock_mode:
 
     st.sidebar.warning(
-        "🧪 Mock Maps mode is ON"
+        "Mock Maps mode is ON"
     )
 
 else:
 
     st.sidebar.success(
-        "🌐 Real Maps mode is ON"
+        "Real Maps mode is ON"
     )
 
 
@@ -450,10 +364,8 @@ st.title(
     "🗺️ NLP Voice Navigation Assistant"
 )
 
-
 st.caption(
-    "Google Maps-style voice navigation "
-    "using classical NLP + OpenStreetMap + OSRM."
+    "Classical NLP + OpenStreetMap + OSRM"
 )
 
 
@@ -462,15 +374,11 @@ st.caption(
 # ============================================================
 
 tab_voice, tab_text = st.tabs(
-
     [
         "🎙️ Voice Input",
         "⌨️ Text Input"
     ]
 )
-
-
-user_text = None
 
 
 # ============================================================
@@ -483,12 +391,10 @@ with tab_voice:
         "🎙️ Speak your command"
     )
 
-
     st.write(
         "Example: "
         "`Navigate from Vijayawada to Guntur`"
     )
-
 
     audio_value = st.audio_input(
         "Record your voice"
@@ -498,7 +404,7 @@ with tab_voice:
     if audio_value is not None:
 
         with st.spinner(
-            "🎧 Converting speech to text..."
+            "Converting speech to text..."
         ):
 
             transcribed = transcribe_audio(
@@ -512,13 +418,28 @@ with tab_voice:
                 f"Transcribed: **{transcribed}**"
             )
 
-            user_text = transcribed
+            st.session_state.user_text = transcribed
+
+            # Process immediately
+            try:
+
+                st.session_state.result = (
+                    pipeline.process(
+                        transcribed
+                    )
+                )
+
+            except Exception as e:
+
+                st.error(
+                    f"Something went wrong: {e}"
+                )
+
 
         else:
 
             st.warning(
-                "Couldn't understand the audio. "
-                "Please try again."
+                "Couldn't understand the audio."
             )
 
 
@@ -538,15 +459,13 @@ with tab_text:
         "Enter navigation command",
 
         placeholder=(
-            "e.g. navigate from Vijayawada to Guntur"
+            "e.g. Navigate from Vijayawada to Guntur"
         )
     )
 
 
     submit_button = st.button(
-
         "🚀 Submit",
-
         key="text_submit"
     )
 
@@ -555,7 +474,27 @@ with tab_text:
 
         if typed.strip():
 
-            user_text = typed.strip()
+            st.session_state.user_text = (
+                typed.strip()
+            )
+
+            with st.spinner(
+                "Understanding your command..."
+            ):
+
+                try:
+
+                    st.session_state.result = (
+                        pipeline.process(
+                            st.session_state.user_text
+                        )
+                    )
+
+                except Exception as e:
+
+                    st.error(
+                        f"Something went wrong: {e}"
+                    )
 
         else:
 
@@ -565,35 +504,17 @@ with tab_text:
 
 
 # ============================================================
-# PROCESS COMMAND
+# SHOW RESULT
 # ============================================================
 
-if user_text:
+if st.session_state.result:
+
+    result = st.session_state.result
+
+    user_text = st.session_state.user_text
+
 
     st.markdown("---")
-
-
-    # ========================================================
-    # PROCESSING
-    # ========================================================
-
-    with st.spinner(
-        "🧠 Understanding your command..."
-    ):
-
-        try:
-
-            result = pipeline.process(
-                user_text
-            )
-
-        except Exception as e:
-
-            st.error(
-                f"Something went wrong: {e}"
-            )
-
-            st.stop()
 
 
     # ========================================================
@@ -603,7 +524,6 @@ if user_text:
     st.markdown(
         "### 🗣️ Your Command"
     )
-
 
     st.info(
         user_text
@@ -625,9 +545,7 @@ if user_text:
     with col1:
 
         st.metric(
-
             "Detected Intent",
-
             result["intent"]
         )
 
@@ -635,9 +553,7 @@ if user_text:
     with col2:
 
         st.metric(
-
             "Confidence",
-
             f"{result['confidence'] * 100:.1f}%"
         )
 
@@ -672,14 +588,13 @@ if user_text:
         "### 🔊 Assistant Response"
     )
 
-
     st.success(
         result["response"]
     )
 
 
     # ========================================================
-    # NAVIGATION ROUTE
+    # ROUTE
     # ========================================================
 
     route = result.get(
@@ -690,49 +605,53 @@ if user_text:
     if route:
 
         st.markdown(
-            "### 🗺️ Navigation"
+            "## 🗺️ Navigation"
         )
 
 
-        # ----------------------------------------------------
-        # ROUTE ORIGIN / DESTINATION
-        # ----------------------------------------------------
+        # ====================================================
+        # ORIGIN AND DESTINATION
+        # ====================================================
 
-        origin_name = route.get(
+        origin = route.get(
             "origin",
             "Starting point"
         )
 
-
-        destination_name = route.get(
+        destination = route.get(
             "destination",
             "Destination"
         )
 
 
         st.write(
-            f"📍 **{origin_name}**"
+            f"📍 **{origin}**"
         )
-
 
         st.write(
-            "⬇️ 🚗"
+            "⬇️"
         )
-
 
         st.write(
-            f"🏁 **{destination_name}**"
+            "🚗 **Driving route**"
+        )
+
+        st.write(
+            "⬇️"
+        )
+
+        st.write(
+            f"🏁 **{destination}**"
         )
 
 
-        # ----------------------------------------------------
+        # ====================================================
         # DISTANCE + TIME
-        # ----------------------------------------------------
+        # ====================================================
 
         distance = route.get(
             "distance_km"
         )
-
 
         duration = route.get(
             "duration_min"
@@ -750,9 +669,7 @@ if user_text:
             with col1:
 
                 st.metric(
-
                     "📏 Distance",
-
                     f"{distance:.2f} km"
                 )
 
@@ -760,25 +677,22 @@ if user_text:
             with col2:
 
                 st.metric(
-
                     "⏱️ Estimated Time",
-
                     f"{duration:.0f} min"
                 )
 
 
-        # ----------------------------------------------------
+        # ====================================================
         # ACTUAL MAP
-        # ----------------------------------------------------
+        # ====================================================
 
         if route.get(
             "route_points"
         ):
 
             st.markdown(
-                "#### 🚗 Driving Route"
+                "### 🚗 Driving Route"
             )
-
 
             display_route_map(
                 route
@@ -786,20 +700,9 @@ if user_text:
 
         else:
 
-            if mock_mode:
-
-                st.info(
-                    "🧪 Mock Maps is enabled. "
-                    "Turn OFF 'Use mock Maps data' "
-                    "to display the actual driving route."
-                )
-
-            else:
-
-                st.warning(
-                    "The routing service did not "
-                    "return route geometry."
-                )
+            st.warning(
+                "No road route was returned."
+            )
 
 
         # ====================================================
@@ -819,7 +722,7 @@ if user_text:
             )
 
 
-            for i, step in enumerate(
+            for index, step in enumerate(
                 directions,
                 1
             ):
@@ -829,52 +732,37 @@ if user_text:
                     "Continue"
                 )
 
-
                 distance_m = step.get(
                     "distance_m",
                     0
                 )
 
 
-                # --------------------------------------------
-                # Convert distance
-                # --------------------------------------------
-
                 if distance_m >= 1000:
 
                     distance_text = (
-
                         f"{distance_m / 1000:.2f} km"
-
                     )
 
                 else:
 
                     distance_text = (
-
                         f"{distance_m:.0f} m"
-
                     )
 
 
-                # --------------------------------------------
-                # Display direction
-                # --------------------------------------------
-
                 st.write(
-
-                    f"**{i}.** "
+                    f"**{index}.** "
                     f"{instruction} "
                     f"— `{distance_text}`"
-
                 )
 
 
         else:
 
             st.info(
-                "Turn-by-turn directions "
-                "are not available."
+                "Turn-by-turn directions are "
+                "not available for this route."
             )
 
 
@@ -901,9 +789,7 @@ if user_text:
 
 
             st.audio(
-
                 audio_bytes,
-
                 format="audio/mp3"
             )
 
@@ -911,10 +797,7 @@ if user_text:
         except Exception as e:
 
             st.info(
-
-                "Voice playback unavailable "
-                f"({e}). "
-                "Response is shown above."
+                f"Voice playback unavailable: {e}"
             )
 
 
@@ -924,8 +807,7 @@ if user_text:
 
 st.markdown("---")
 
-
 st.caption(
-    "🗺️ NLP Voice Assistant | "
-    "Classical NLP + OpenStreetMap + OSRM"
+    "NLP Voice Assistant | "
+    "OpenStreetMap + OSRM"
 )
