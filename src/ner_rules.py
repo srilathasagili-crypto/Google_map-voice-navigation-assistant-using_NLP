@@ -1,22 +1,27 @@
 """
-Rule-based Named Entity Recognition for the navigation domain.
+Rule-based Named Entity Recognition for NLP Voice Navigation Assistant.
 
-Supports:
-- Single destination:
-    navigate to Charminar
+Extracts:
+- start_location
+- destination
+- place_type
+- route_preference
 
-- Origin + destination:
-    navigate from Vijayawada to Guntur
-    directions from Hyderabad to Warangal
-    go from Secunderabad to Charminar
+Examples:
 
-- Nearby places:
-    find nearest hospital
-    find nearest ATM
+navigate to Charminar
+    -> destination = charminar
 
-- Route preferences:
-    avoid tolls
-    fastest route
+navigate from Vijayawada to Guntur
+    -> start_location = vijayawada
+    -> destination = guntur
+
+take me from Hyderabad to Secunderabad
+    -> start_location = hyderabad
+    -> destination = secunderabad
+
+find nearest hospital
+    -> place_type = hospital
 """
 
 import re
@@ -29,6 +34,7 @@ from preprocess import clean_text
 # ============================================================
 
 PLACE_TYPES = {
+
     "hospital": [
         "hospital",
         "hospitals",
@@ -89,7 +95,7 @@ PLACE_TYPES = {
         "charging station",
         "ev charging",
         "charging point"
-    ],
+    ]
 }
 
 
@@ -98,6 +104,7 @@ PLACE_TYPES = {
 # ============================================================
 
 ROUTE_PREFERENCES = {
+
     "avoid_highway": [
         "avoid highway",
         "avoid highways",
@@ -141,8 +148,28 @@ ROUTE_PREFERENCES = {
         "public transport",
         "bus route",
         "train route"
-    ],
+    ]
 }
+
+
+# ============================================================
+# FILLER WORDS
+# ============================================================
+
+_FILLER_PATTERNS = [
+
+    r"\b(navigate|navigation|route|routes|direction|directions)\b",
+
+    r"\b(show|give|take|guide)\b",
+
+    r"\b(me|please|the|a|an)\b",
+
+    r"\b(i want to go|i need to go|i want to travel)\b",
+
+    r"\b(how do i get)\b",
+
+    r"\b(way to)\b"
+]
 
 
 # ============================================================
@@ -158,6 +185,7 @@ def extract_place_type(text: str):
         for variant in variants:
 
             if variant in text:
+
                 return canonical
 
     return None
@@ -176,48 +204,90 @@ def extract_route_preference(text: str):
         for variant in variants:
 
             if variant in text:
+
                 return canonical
 
     return None
 
 
 # ============================================================
-# ORIGIN + DESTINATION EXTRACTION
+# CLEAN DESTINATION
 # ============================================================
 
-def extract_origin_destination(text: str):
+def clean_location(location: str):
+
     """
-    Extract origin and destination from commands such as:
+    Clean a location extracted from the command.
+    """
 
-        navigate from Vijayawada to Guntur
+    location = location.lower().strip()
 
-        directions from Hyderabad to Warangal
+    # Remove punctuation
 
-        go from Secunderabad to Charminar
+    location = re.sub(
+        r"[,.!?]+",
+        " ",
+        location
+    )
 
-        route from Kukatpally to Gachibowli
+    # Remove extra spaces
+
+    location = re.sub(
+        r"\s+",
+        " ",
+        location
+    ).strip()
+
+    # Remove common filler words
+
+    for pattern in _FILLER_PATTERNS:
+
+        location = re.sub(
+            pattern,
+            "",
+            location,
+            flags=re.IGNORECASE
+        )
+
+    location = re.sub(
+        r"\s+",
+        " ",
+        location
+    ).strip()
+
+    return location
+
+
+# ============================================================
+# EXTRACT START + DESTINATION
+# ============================================================
+
+def extract_from_to(text: str):
+
+    """
+    Extract:
+
+        from A to B
+
+    Example:
+
+        Navigate from Vijayawada to Guntur
+
+    Returns:
+
+        {
+            "start_location": "vijayawada",
+            "destination": "guntur"
+        }
     """
 
     text = text.lower().strip()
 
-    # Remove punctuation
-    text = re.sub(
-        r"[.,!?]",
-        " ",
-        text
-    )
-
-    text = re.sub(
-        r"\s+",
-        " ",
-        text
-    ).strip()
-
 
     # --------------------------------------------------------
-    # Pattern 1:
+    # Pattern:
     #
-    # from X to Y
+    # from A to B
     # --------------------------------------------------------
 
     pattern = r"\bfrom\s+(.+?)\s+to\s+(.+)$"
@@ -228,40 +298,72 @@ def extract_origin_destination(text: str):
     )
 
 
-    if match:
+    if not match:
 
-        origin = match.group(1).strip()
-
-        destination = match.group(2).strip()
+        return None
 
 
-        # Remove common ending words
-        destination = re.sub(
-            r"\bplease\b$",
-            "",
+    start_location = match.group(
+        1
+    ).strip()
+
+
+    destination = match.group(
+        2
+    ).strip()
+
+
+    start_location = clean_location(
+        start_location
+    )
+
+
+    destination = clean_location(
+        destination
+    )
+
+
+    if not start_location or not destination:
+
+        return None
+
+
+    return {
+
+        "start_location":
+            start_location,
+
+        "destination":
             destination
-        ).strip()
+    }
 
 
-        if origin and destination:
+# ============================================================
+# EXTRACT "TO DESTINATION"
+# ============================================================
 
-            return {
-                "origin": origin,
-                "destination": destination
-            }
+def extract_to_destination(text: str):
+
+    """
+    Extract destination from:
+
+        navigate to Charminar
+
+        take me to Guntur
+
+        go to Hyderabad
+    """
+
+    text = text.lower().strip()
 
 
     # --------------------------------------------------------
-    # Pattern 2:
+    # Pattern:
     #
-    # X to Y
-    #
-    # Used for phrases like:
-    # Vijayawada to Guntur
-    # Hyderabad to Warangal
+    # to destination
     # --------------------------------------------------------
 
-    pattern = r"^(.+?)\s+to\s+(.+)$"
+    pattern = r"\bto\s+(.+)$"
 
     match = re.search(
         pattern,
@@ -269,89 +371,66 @@ def extract_origin_destination(text: str):
     )
 
 
-    if match:
+    if not match:
 
-        origin = match.group(1).strip()
-
-        destination = match.group(2).strip()
+        return None
 
 
-        # Remove navigation words from origin
-        origin = re.sub(
-            r"^(navigate|route|directions?|go|travel)\s+",
-            "",
-            origin
-        ).strip()
+    destination = match.group(
+        1
+    ).strip()
 
 
-        if origin and destination:
-
-            return {
-                "origin": origin,
-                "destination": destination
-            }
+    destination = clean_location(
+        destination
+    )
 
 
-    return None
+    return destination if destination else None
 
 
 # ============================================================
-# SINGLE DESTINATION EXTRACTION
+# EXTRACT DESTINATION
 # ============================================================
 
 def extract_destination(text: str):
+
+    """
+    Extract destination for simple navigation commands.
+    """
 
     text = text.lower().strip()
 
 
     # --------------------------------------------------------
-    # First check whether this is:
-    #
-    # from A to B
-    #
-    # If yes, don't treat the entire phrase as destination.
+    # First check FROM -> TO
     # --------------------------------------------------------
 
-    route = extract_origin_destination(text)
-
-    if route:
-
-        return route["destination"]
-
-
-    # --------------------------------------------------------
-    # Filler words
-    # --------------------------------------------------------
-
-    filler_patterns = [
-
-        r"\b(navigate|route|directions?|guide|show|take|plot)\b",
-
-        r"\b(me|to|the|for|please|towards?)\b",
-
-        r"\b(i want to go|i need|how do i get|find (a|the)?|way to)\b",
-    ]
-
-
-    for pattern in filler_patterns:
-
-        text = re.sub(
-            pattern,
-            "",
-            text
-        )
-
-
-    text = re.sub(
-        r"\s+",
-        " ",
+    from_to = extract_from_to(
         text
-    ).strip(
-        " .,?!"
     )
 
 
-    return text if text else None
+    if from_to:
+
+        return from_to["destination"]
+
+
+    # --------------------------------------------------------
+    # Otherwise check TO
+    # --------------------------------------------------------
+
+    destination = extract_to_destination(
+        text
+    )
+
+
+    if destination:
+
+        return destination
+
+
+    return None
 
 
 # ============================================================
@@ -363,66 +442,72 @@ def extract_entities(
     intent: str = None
 ):
 
+    """
+    Main entity extraction function.
+    """
+
     entities = {}
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # PLACE TYPE
-    # --------------------------------------------------------
+    # ========================================================
 
     place_type = extract_place_type(
         text
     )
+
 
     if place_type:
 
         entities["place_type"] = place_type
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # ROUTE PREFERENCE
-    # --------------------------------------------------------
+    # ========================================================
 
     route_pref = extract_route_preference(
         text
     )
+
 
     if route_pref:
 
         entities["route_preference"] = route_pref
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # NAVIGATION
-    # --------------------------------------------------------
+    # ========================================================
 
-    if intent == "navigate" or (
-        intent is None and not place_type
-    ):
+    if intent == "navigate":
 
-        # First check for:
-        # origin + destination
+        # ----------------------------------------------------
+        # Try "from A to B"
+        # ----------------------------------------------------
 
-        route = extract_origin_destination(
+        from_to = extract_from_to(
             text
         )
 
 
-        if route:
+        if from_to:
 
-            entities["origin"] = route[
-                "origin"
-            ]
+            entities["start_location"] = (
+                from_to["start_location"]
+            )
 
-            entities["destination"] = route[
-                "destination"
-            ]
+            entities["destination"] = (
+                from_to["destination"]
+            )
 
 
         else:
 
-            # Otherwise extract
-            # only destination
+            # ------------------------------------------------
+            # Simple "to B"
+            # ------------------------------------------------
 
             destination = extract_destination(
                 text
@@ -473,29 +558,26 @@ if __name__ == "__main__":
         ),
 
         (
-            "directions from Hyderabad to Warangal",
+            "take me from Hyderabad to Secunderabad",
             "navigate"
         ),
 
         (
-            "go from Secunderabad to Charminar",
+            "give directions from Chennai to Bangalore",
             "navigate"
-        ),
-
-        (
-            "route from Kukatpally to Gachibowli",
-            "navigate"
-        ),
+        )
     ]
 
 
     for text, intent in tests:
 
         print(
-            f"\n{text}"
+            "\nInput:",
+            text
         )
 
         print(
+            "Entities:",
             extract_entities(
                 text,
                 intent
