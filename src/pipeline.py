@@ -1,21 +1,22 @@
 """
-Main pipeline for the NLP Voice Navigation Assistant.
+Main pipeline for NLP Voice Navigation Assistant.
 
 Flow:
-
-Voice/Text
-    ↓
+Text / Voice
+      ↓
 Intent Classification
-    ↓
-Named Entity Recognition
-    ↓
-Geocoding using Nominatim
-    ↓
-Routing using OSRM
-    ↓
-Route + Turn-by-Turn Directions
-    ↓
-Response
+      ↓
+Entity Extraction
+      ↓
+Geocoding with Nominatim
+      ↓
+Driving Route with OSRM
+      ↓
+Route coordinates
+      ↓
+Streamlit Folium Map
+      ↓
+Response + TTS
 """
 
 from intent_classifier import IntentClassifier
@@ -26,130 +27,33 @@ import maps_api
 
 
 # ============================================================
-# MOCK SETTINGS
+# DEFAULT SETTINGS
 # ============================================================
 
 MOCK_MAPS = False
 
 
 # ============================================================
-# MOCK LOCATION
+# DEFAULT CURRENT LOCATION
 # ============================================================
 
 MOCK_CURRENT_LOCATION = {
-
     "lat": 17.3850,
-
     "lon": 78.4867,
-
-    "display_name":
-        "Hyderabad, India"
+    "display_name": "Hyderabad, India"
 }
 
 
 # ============================================================
-# MOCK NEARBY PLACES
-# ============================================================
-
-MOCK_NEARBY = {
-
-    "hospital": {
-        "display_name":
-            "City Care Hospital",
-
-        "distance_km":
-            1.4
-    },
-
-    "atm": {
-        "display_name":
-            "SBI ATM, Main Road",
-
-        "distance_km":
-            0.6
-    },
-
-    "fuel_station": {
-        "display_name":
-            "HP Petrol Pump",
-
-        "distance_km":
-            2.1
-    },
-
-    "pharmacy": {
-        "display_name":
-            "Apollo Pharmacy",
-
-        "distance_km":
-            0.9
-    },
-
-    "restaurant": {
-        "display_name":
-            "Paradise Restaurant",
-
-        "distance_km":
-            1.8
-    },
-
-    "cafe": {
-        "display_name":
-            "Cafe Coffee Day",
-
-        "distance_km":
-            0.5
-    },
-
-    "bank": {
-        "display_name":
-            "HDFC Bank Branch",
-
-        "distance_km":
-            1.1
-    },
-
-    "parking": {
-        "display_name":
-            "Public Parking Lot",
-
-        "distance_km":
-            0.3
-    },
-
-    "grocery": {
-        "display_name":
-            "More Supermarket",
-
-        "distance_km":
-            1.0
-    },
-
-    "charging_station": {
-        "display_name":
-            "Tata Power EV Charging Point",
-
-        "distance_km":
-            3.0
-    }
-}
-
-
-# ============================================================
-# PIPELINE CLASS
+# PIPELINE
 # ============================================================
 
 class VoiceAssistantPipeline:
 
-    def __init__(
-        self,
-        mock_maps: bool = MOCK_MAPS
-    ):
+    def __init__(self, mock_maps: bool = MOCK_MAPS):
 
-        self.intent_classifier = (
-            IntentClassifier(
-                confidence_threshold=0.35
-            )
+        self.intent_classifier = IntentClassifier(
+            confidence_threshold=0.35
         )
 
         self.mock_maps = mock_maps
@@ -159,134 +63,28 @@ class VoiceAssistantPipeline:
     # NAVIGATION
     # ========================================================
 
-    def handle_navigate(
-        self,
-        entities
-    ):
+    def handle_navigate(self, entities):
 
-        """
-        Handles navigation.
-
-        Examples:
-
-        navigate to Charminar
-
-        navigate from Vijayawada to Guntur
-
-        directions from Hyderabad to Warangal
-        """
-
+        destination = entities.get("destination")
 
         # ----------------------------------------------------
-        # Get origin
+        # CASE 1:
+        # "navigate to Charminar"
         # ----------------------------------------------------
-
-        origin = entities.get(
-            "origin"
-        )
-
-
-        # ----------------------------------------------------
-        # Get destination
-        # ----------------------------------------------------
-
-        destination = entities.get(
-            "destination"
-        )
-
 
         if not destination:
-
-            return (
-                generate_response(
-                    "no_result"
-                ),
-                None
-            )
-
-
-        # ====================================================
-        # CASE 1
-        # Origin + Destination
-        # ====================================================
-
-        if origin:
-
-            origin_geo = (
-                maps_api.geocode(
-                    origin
-                )
-            )
-
-
-        # ====================================================
-        # CASE 2
-        # Only Destination
-        #
-        # Use Hyderabad as demo
-        # starting location.
-        # ====================================================
-
-        else:
-
-            origin_geo = {
-
-                "lat":
-                    MOCK_CURRENT_LOCATION[
-                        "lat"
-                    ],
-
-                "lon":
-                    MOCK_CURRENT_LOCATION[
-                        "lon"
-                    ],
-
-                "display_name":
-                    MOCK_CURRENT_LOCATION[
-                        "display_name"
-                    ]
+            return {
+                "response": generate_response("no_result"),
+                "route": None
             }
 
-            origin = (
-                MOCK_CURRENT_LOCATION[
-                    "display_name"
-                ]
-            )
-
 
         # ----------------------------------------------------
-        # Check origin
+        # CASE 2:
+        # "navigate from Vijayawada to Guntur"
         # ----------------------------------------------------
 
-        if not origin_geo:
-
-            return (
-                f"I couldn't find the starting "
-                f"location '{origin}'. "
-                f"Please try another place.",
-                None
-            )
-
-
-        # ----------------------------------------------------
-        # Find destination
-        # ----------------------------------------------------
-
-        destination_geo = (
-            maps_api.geocode(
-                destination
-            )
-        )
-
-
-        if not destination_geo:
-
-            return (
-                f"I couldn't find the destination "
-                f"'{destination}'. "
-                f"Please try another place.",
-                None
-            )
+        start_location = entities.get("start_location")
 
 
         # ====================================================
@@ -295,434 +93,352 @@ class VoiceAssistantPipeline:
 
         if self.mock_maps:
 
-            return (
+            if start_location:
 
-                (
-                    f"Directions from "
-                    f"{origin.title()} "
-                    f"to "
-                    f"{destination.title()}"
-                ),
+                return {
+                    "response": (
+                        f"Starting from {start_location.title()} "
+                        f"and navigating to {destination.title()}."
+                    ),
 
-                {
+                    "route": {
+                        "distance_km": 120.0,
+                        "duration_min": 150,
 
-                    "distance_km":
-                        5.0,
+                        "route_points": [],
 
-                    "duration_min":
-                        15,
+                        "start_lat": 16.5062,
+                        "start_lon": 80.6480,
 
-                    "route_points":
-                        [],
+                        "end_lat": 16.3067,
+                        "end_lon": 80.4365,
 
-                    "directions":
-                        [],
-
-                    "start_lat":
-                        origin_geo["lat"],
-
-                    "start_lon":
-                        origin_geo["lon"],
-
-                    "end_lat":
-                        destination_geo["lat"],
-
-                    "end_lon":
-                        destination_geo["lon"],
-
-                    "destination":
-                        destination.title(),
-
-                    "origin":
-                        origin.title()
+                        "destination": destination.title()
+                    }
                 }
+
+            else:
+
+                return {
+                    "response": (
+                        f"Navigating to {destination.title()}."
+                    ),
+
+                    "route": {
+                        "distance_km": 5.0,
+                        "duration_min": 15,
+
+                        "route_points": [],
+
+                        "start_lat": MOCK_CURRENT_LOCATION["lat"],
+                        "start_lon": MOCK_CURRENT_LOCATION["lon"],
+
+                        "end_lat": 17.4000,
+                        "end_lon": 78.4800,
+
+                        "destination": destination.title()
+                    }
+                }
+
+
+        # ====================================================
+        # REAL MAP MODE
+        # ====================================================
+
+        # ----------------------------------------------------
+        # Determine START location
+        # ----------------------------------------------------
+
+        if start_location:
+
+            start_geo = maps_api.geocode(
+                start_location
             )
 
+        else:
 
-        # ====================================================
-        # REAL OSRM ROUTING
-        # ====================================================
+            start_geo = {
+                "lat": MOCK_CURRENT_LOCATION["lat"],
+                "lon": MOCK_CURRENT_LOCATION["lon"],
+                "display_name": MOCK_CURRENT_LOCATION["display_name"]
+            }
+
+
+        # ----------------------------------------------------
+        # Check start location
+        # ----------------------------------------------------
+
+        if not start_geo:
+
+            return {
+                "response": (
+                    f"I couldn't find the starting location "
+                    f"'{start_location}'."
+                ),
+                "route": None
+            }
+
+
+        # ----------------------------------------------------
+        # Geocode destination
+        # ----------------------------------------------------
+
+        destination_geo = maps_api.geocode(
+            destination
+        )
+
+
+        if not destination_geo:
+
+            return {
+                "response": (
+                    f"I couldn't find the destination "
+                    f"'{destination}'. "
+                    f"Could you try a more specific place name?"
+                ),
+                "route": None
+            }
+
+
+        # ----------------------------------------------------
+        # Get actual driving route
+        # ----------------------------------------------------
 
         route = maps_api.get_route(
 
-            origin_geo["lat"],
-
-            origin_geo["lon"],
+            start_geo["lat"],
+            start_geo["lon"],
 
             destination_geo["lat"],
-
             destination_geo["lon"]
+
         )
 
 
         if not route:
 
-            return (
+            return {
+                "response": (
+                    "I found the locations, but I couldn't "
+                    "calculate a driving route."
+                ),
+                "route": None
+            }
 
-                "I couldn't calculate a route "
-                "between those locations. "
-                "Please try again.",
 
-                None
+        # ----------------------------------------------------
+        # Add map information
+        # ----------------------------------------------------
+
+        route["start_lat"] = start_geo["lat"]
+        route["start_lon"] = start_geo["lon"]
+
+        route["end_lat"] = destination_geo["lat"]
+        route["end_lon"] = destination_geo["lon"]
+
+        route["destination"] = destination_geo.get(
+            "display_name",
+            destination
+        )
+
+
+        # ----------------------------------------------------
+        # Response
+        # ----------------------------------------------------
+
+        if start_location:
+
+            response = (
+                f"Driving directions from "
+                f"{start_location.title()} to "
+                f"{destination.title()}. "
+                f"The distance is approximately "
+                f"{route['distance_km']} kilometers "
+                f"and the estimated driving time is "
+                f"{route['duration_min']} minutes."
+            )
+
+        else:
+
+            response = (
+                f"Driving directions to "
+                f"{destination.title()}. "
+                f"The distance is approximately "
+                f"{route['distance_km']} kilometers "
+                f"and the estimated driving time is "
+                f"{route['duration_min']} minutes."
             )
 
 
-        # ----------------------------------------------------
-        # Add coordinates
-        # ----------------------------------------------------
-
-        route["start_lat"] = (
-            origin_geo["lat"]
-        )
-
-        route["start_lon"] = (
-            origin_geo["lon"]
-        )
-
-        route["end_lat"] = (
-            destination_geo["lat"]
-        )
-
-        route["end_lon"] = (
-            destination_geo["lon"]
-        )
-
-        route["destination"] = (
-            destination.title()
-        )
-
-        route["origin"] = (
-            origin.title()
-        )
-
-
-        # ====================================================
-        # RESPONSE TEXT
-        # ====================================================
-
-        response = (
-
-            f"Directions from "
-            f"{origin.title()} "
-            f"to "
-            f"{destination.title()}. "
-            f"The distance is "
-            f"{route['distance_km']} "
-            f"kilometers and the estimated "
-            f"travel time is "
-            f"{route['duration_min']} minutes."
-        )
-
-
-        return response, route
+        return {
+            "response": response,
+            "route": route
+        }
 
 
     # ========================================================
     # NEARBY SEARCH
     # ========================================================
 
-    def handle_search_nearby(
-        self,
-        entities
-    ):
+    def handle_search_nearby(self, entities):
 
-        place_type = entities.get(
-            "place_type"
-        )
-
+        place_type = entities.get("place_type")
 
         if not place_type:
 
-            return (
-                generate_response(
-                    "no_result"
-                ),
-                None
-            )
-
-
-        # ----------------------------------------------------
-        # MOCK
-        # ----------------------------------------------------
-
-        if self.mock_maps:
-
-            place = (
-                MOCK_NEARBY.get(
-                    place_type
-                )
-            )
-
-
-        # ----------------------------------------------------
-        # REAL
-        # ----------------------------------------------------
-
-        else:
-
-            result = (
-                maps_api.find_nearby_place(
-
-                    place_type,
-
-                    MOCK_CURRENT_LOCATION[
-                        "lat"
-                    ],
-
-                    MOCK_CURRENT_LOCATION[
-                        "lon"
-                    ]
-                )
-            )
-
-
-            if result:
-
-                place = {
-
-                    "display_name":
-                        result[
-                            "display_name"
-                        ],
-
-                    "distance_km":
-                        1.0
-                }
-
-            else:
-
-                place = None
-
-
-        if not place:
-
-            return (
-
-                generate_response(
-                    "no_result"
-                ),
-
-                None
-            )
-
-
-        response = generate_response(
-
-            "search_nearby",
-
-            {
-
-                "place_type":
-                    place_type.replace(
-                        "_",
-                        " "
-                    ),
-
-                "place_name":
-                    place[
-                        "display_name"
-                    ],
-
-                "distance_km":
-                    place[
-                        "distance_km"
-                    ]
+            return {
+                "response": generate_response("no_result"),
+                "route": None
             }
+
+
+        result = maps_api.find_nearby_place(
+
+            place_type,
+
+            MOCK_CURRENT_LOCATION["lat"],
+
+            MOCK_CURRENT_LOCATION["lon"]
+
         )
 
 
-        return response, None
+        if not result:
+
+            return {
+                "response": (
+                    f"I couldn't find a nearby {place_type}."
+                ),
+                "route": None
+            }
+
+
+        response = (
+            f"I found {result['display_name']} "
+            f"near your location."
+        )
+
+
+        return {
+            "response": response,
+            "route": None
+        }
 
 
     # ========================================================
     # TRAFFIC
     # ========================================================
 
-    def handle_traffic_info(
-        self,
-        entities
-    ):
+    def handle_traffic_info(self, entities):
 
         import random
 
-        status = random.choice(
+        status = random.choice([
+            "light",
+            "moderate",
+            "heavy"
+        ])
 
-            [
-                "light",
-                "moderate",
-                "heavy"
-            ]
-        )
-
-
-        return (
-
-            generate_response(
-
-                "traffic_info",
-
-                {
-                    "traffic_status":
-                        status
-                }
+        return {
+            "response": (
+                f"Traffic is currently {status}."
             ),
-
-            None
-        )
+            "route": None
+        }
 
 
     # ========================================================
     # ROUTE PREFERENCE
     # ========================================================
 
-    def handle_route_preference(
-        self,
-        entities
-    ):
+    def handle_route_preference(self, entities):
 
         pref = entities.get(
-
             "route_preference",
-
             "your preferred route"
         )
 
-
-        return (
-
-            generate_response(
-
-                "route_preference",
-
-                {
-
-                    "preference":
-                        pref.replace(
-                            "_",
-                            " "
-                        )
-                }
+        return {
+            "response": (
+                f"I will use the {pref.replace('_', ' ')}."
             ),
-
-            None
-        )
+            "route": None
+        }
 
 
     # ========================================================
     # CANCEL
     # ========================================================
 
-    def handle_cancel(
-        self,
-        entities
-    ):
+    def handle_cancel(self, entities):
 
-        return (
-
-            generate_response(
-                "cancel"
-            ),
-
-            None
-        )
+        return {
+            "response": "Navigation cancelled.",
+            "route": None
+        }
 
 
     # ========================================================
     # CURRENT LOCATION
     # ========================================================
 
-    def handle_current_location(
-        self,
-        entities
-    ):
+    def handle_current_location(self, entities):
 
-        return (
-
-            generate_response(
-
-                "current_location",
-
-                {
-
-                    "place_name":
-                        MOCK_CURRENT_LOCATION[
-                            "display_name"
-                        ]
-                }
+        return {
+            "response": (
+                f"Your current location is "
+                f"{MOCK_CURRENT_LOCATION['display_name']}."
             ),
-
-            None
-        )
+            "route": None
+        }
 
 
     # ========================================================
     # UNKNOWN
     # ========================================================
 
-    def handle_unknown(
-        self,
-        entities
-    ):
+    def handle_unknown(self, entities):
 
-        return (
-
-            generate_response(
-                "unknown"
+        return {
+            "response": (
+                "Sorry, I couldn't understand "
+                "your navigation request."
             ),
-
-            None
-        )
+            "route": None
+        }
 
 
     # ========================================================
     # MAIN PROCESS
     # ========================================================
 
-    def process(
-        self,
-        user_text: str
-    ) -> dict:
+    def process(self, user_text: str):
 
-        """
-        Runs the complete NLP pipeline.
-        """
+        # ----------------------------------------------------
+        # Intent classification
+        # ----------------------------------------------------
+
+        intent_result = self.intent_classifier.predict(
+            user_text
+        )
+
+        intent = intent_result["intent"]
+
+        confidence = intent_result["confidence"]
 
 
         # ----------------------------------------------------
-        # INTENT CLASSIFICATION
-        # ----------------------------------------------------
-
-        intent_result = (
-            self.intent_classifier.predict(
-                user_text
-            )
-        )
-
-
-        intent = (
-            intent_result["intent"]
-        )
-
-
-        confidence = (
-            intent_result["confidence"]
-        )
-
-
-        # ----------------------------------------------------
-        # ENTITY EXTRACTION
+        # Entity extraction
         # ----------------------------------------------------
 
         entities = extract_entities(
-
             user_text,
-
             intent
         )
 
 
         # ----------------------------------------------------
-        # HANDLERS
+        # Select handler
         # ----------------------------------------------------
 
         handlers = {
@@ -751,26 +467,22 @@ class VoiceAssistantPipeline:
 
 
         handler = handlers.get(
-
             intent,
-
             self.handle_unknown
         )
 
 
         # ----------------------------------------------------
-        # RUN HANDLER
+        # Execute handler
         # ----------------------------------------------------
 
-        response_text, route = (
-            handler(
-                entities
-            )
+        result = handler(
+            entities
         )
 
 
         # ----------------------------------------------------
-        # RETURN RESULT
+        # Final result
         # ----------------------------------------------------
 
         return {
@@ -791,75 +503,39 @@ class VoiceAssistantPipeline:
                 entities,
 
             "response":
-                response_text,
+                result["response"],
 
             "route":
-                route
+                result.get("route")
         }
 
 
 # ============================================================
-# CLI
+# CLI TEST
 # ============================================================
 
-def run_cli(
-    use_microphone=False
-):
+if __name__ == "__main__":
 
-    from speech_io import listen, speak
-
-
-    pipeline = (
-        VoiceAssistantPipeline(
-            mock_maps=False
-        )
+    pipeline = VoiceAssistantPipeline(
+        mock_maps=False
     )
-
-
-    print(
-        "=" * 60
-    )
-
-    print(
-        "NLP Voice Navigation Assistant"
-    )
-
-    print(
-        "Type 'quit' to exit."
-    )
-
-    print(
-        "=" * 60
-    )
-
 
     while True:
 
-        user_text = listen(
-
-            use_microphone=
-                use_microphone
+        text = input(
+            "\nEnter command: "
         )
 
-
-        if user_text.strip().lower() in (
-
-            "quit",
-
-            "exit"
-        ):
-
-            print(
-                "Goodbye!"
-            )
+        if text.lower() in [
+            "exit",
+            "quit"
+        ]:
 
             break
 
 
-        result = (
-            pipeline.process(
-                user_text
-            )
+        result = pipeline.process(
+            text
         )
 
 
@@ -868,86 +544,22 @@ def run_cli(
             result["intent"]
         )
 
-
         print(
             "Confidence:",
             result["confidence"]
         )
-
 
         print(
             "Entities:",
             result["entities"]
         )
 
-
         print(
             "Response:",
             result["response"]
         )
 
-
-        if result["route"]:
-
-            print(
-                "\nDistance:",
-                result["route"][
-                    "distance_km"
-                ],
-                "km"
-            )
-
-
-            print(
-                "Duration:",
-                result["route"][
-                    "duration_min"
-                ],
-                "minutes"
-            )
-
-
-            print(
-                "\nDirections:"
-            )
-
-
-            for i, step in enumerate(
-
-                result["route"][
-                    "directions"
-                ],
-
-                1
-            ):
-
-                print(
-
-                    f"{i}. "
-                    f"{step['instruction']} "
-                    f"({step['distance_m']} m)"
-                )
-
-
-        speak(
-
-            result["response"],
-
-            use_audio=False
-        )
-
-
         print(
-            "-" * 60
+            "Route:",
+            result["route"]
         )
-
-
-# ============================================================
-# MAIN
-# ============================================================
-
-if __name__ == "__main__":
-
-    run_cli(
-        use_microphone=False
-    )
