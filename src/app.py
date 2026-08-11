@@ -1,4 +1,3 @@
-```python
 """
 Streamlit visual demo for the NLP Voice Assistant.
 
@@ -649,5 +648,4 @@ st.caption(
     "🗺️ NLP Voice Assistant | "
     "Classical NLP + OpenStreetMap + OSRM"
 )
-```
 
