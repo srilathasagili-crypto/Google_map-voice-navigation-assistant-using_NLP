@@ -7,15 +7,15 @@ Voice/Text
     ↓
 Intent Classification
     ↓
-Entity Extraction
+Named Entity Recognition
     ↓
-Nominatim Geocoding
+Geocoding using Nominatim
     ↓
-OSRM Routing
+Routing using OSRM
+    ↓
+Route + Turn-by-Turn Directions
     ↓
 Response
-    ↓
-Streamlit Map + TTS
 """
 
 from intent_classifier import IntentClassifier
@@ -26,92 +26,111 @@ import maps_api
 
 
 # ============================================================
-# MOCK CONFIGURATION
+# MOCK SETTINGS
 # ============================================================
 
-MOCK_MAPS = True
+MOCK_MAPS = False
 
+
+# ============================================================
+# MOCK LOCATION
+# ============================================================
 
 MOCK_CURRENT_LOCATION = {
+
     "lat": 17.3850,
+
     "lon": 78.4867,
-    "display_name": "Hyderabad, India"
+
+    "display_name":
+        "Hyderabad, India"
 }
 
 
 # ============================================================
-# MOCK DATA
+# MOCK NEARBY PLACES
 # ============================================================
 
 MOCK_NEARBY = {
 
     "hospital": {
-        "display_name": "City Care Hospital",
-        "distance_km": 1.4
+        "display_name":
+            "City Care Hospital",
+
+        "distance_km":
+            1.4
     },
 
     "atm": {
-        "display_name": "SBI ATM, Main Road",
-        "distance_km": 0.6
+        "display_name":
+            "SBI ATM, Main Road",
+
+        "distance_km":
+            0.6
     },
 
     "fuel_station": {
-        "display_name": "HP Petrol Pump",
-        "distance_km": 2.1
+        "display_name":
+            "HP Petrol Pump",
+
+        "distance_km":
+            2.1
     },
 
     "pharmacy": {
-        "display_name": "Apollo Pharmacy",
-        "distance_km": 0.9
+        "display_name":
+            "Apollo Pharmacy",
+
+        "distance_km":
+            0.9
     },
 
     "restaurant": {
-        "display_name": "Paradise Restaurant",
-        "distance_km": 1.8
+        "display_name":
+            "Paradise Restaurant",
+
+        "distance_km":
+            1.8
     },
 
     "cafe": {
-        "display_name": "Cafe Coffee Day",
-        "distance_km": 0.5
+        "display_name":
+            "Cafe Coffee Day",
+
+        "distance_km":
+            0.5
     },
 
     "bank": {
-        "display_name": "HDFC Bank Branch",
-        "distance_km": 1.1
+        "display_name":
+            "HDFC Bank Branch",
+
+        "distance_km":
+            1.1
     },
 
     "parking": {
-        "display_name": "Public Parking Lot",
-        "distance_km": 0.3
+        "display_name":
+            "Public Parking Lot",
+
+        "distance_km":
+            0.3
     },
 
     "grocery": {
-        "display_name": "More Supermarket",
-        "distance_km": 1.0
+        "display_name":
+            "More Supermarket",
+
+        "distance_km":
+            1.0
     },
 
     "charging_station": {
-        "display_name": "Tata Power EV Charging Point",
-        "distance_km": 3.0
-    }
-}
+        "display_name":
+            "Tata Power EV Charging Point",
 
-
-MOCK_DESTINATIONS = {
-
-    "central park": {
-        "distance_km": 4.2,
-        "duration_min": 12
-    },
-
-    "charminar": {
-        "distance_km": 6.5,
-        "duration_min": 20
-    },
-
-    "hyderabad railway station": {
-        "distance_km": 5.1,
-        "duration_min": 15
+        "distance_km":
+            3.0
     }
 }
 
@@ -127,8 +146,10 @@ class VoiceAssistantPipeline:
         mock_maps: bool = MOCK_MAPS
     ):
 
-        self.intent_classifier = IntentClassifier(
-            confidence_threshold=0.35
+        self.intent_classifier = (
+            IntentClassifier(
+                confidence_threshold=0.35
+            )
         )
 
         self.mock_maps = mock_maps
@@ -143,6 +164,32 @@ class VoiceAssistantPipeline:
         entities
     ):
 
+        """
+        Handles navigation.
+
+        Examples:
+
+        navigate to Charminar
+
+        navigate from Vijayawada to Guntur
+
+        directions from Hyderabad to Warangal
+        """
+
+
+        # ----------------------------------------------------
+        # Get origin
+        # ----------------------------------------------------
+
+        origin = entities.get(
+            "origin"
+        )
+
+
+        # ----------------------------------------------------
+        # Get destination
+        # ----------------------------------------------------
+
         destination = entities.get(
             "destination"
         )
@@ -150,163 +197,228 @@ class VoiceAssistantPipeline:
 
         if not destination:
 
-            return {
-                "response": generate_response(
+            return (
+                generate_response(
                     "no_result"
                 ),
-                "route": None
-            }
-
-
-        # ----------------------------------------------------
-        # MOCK ROUTE
-        # ----------------------------------------------------
-
-        if self.mock_maps:
-
-            route_data = MOCK_DESTINATIONS.get(
-
-                destination.lower(),
-
-                {
-                    "distance_km": 5.0,
-                    "duration_min": 15
-                }
+                None
             )
 
 
-            # Mock mode does not have actual road geometry
+        # ====================================================
+        # CASE 1
+        # Origin + Destination
+        # ====================================================
 
-            route = {
+        if origin:
 
-                "distance_km":
-                    route_data["distance_km"],
-
-                "duration_min":
-                    route_data["duration_min"],
-
-                "route_points": None,
-
-                "start_lat":
-                    MOCK_CURRENT_LOCATION["lat"],
-
-                "start_lon":
-                    MOCK_CURRENT_LOCATION["lon"],
-
-                "end_lat": None,
-
-                "end_lon": None,
-
-                "destination":
-                    destination.title()
-            }
+            origin_geo = (
+                maps_api.geocode(
+                    origin
+                )
+            )
 
 
-        # ----------------------------------------------------
-        # REAL MAPS
-        # ----------------------------------------------------
+        # ====================================================
+        # CASE 2
+        # Only Destination
+        #
+        # Use Hyderabad as demo
+        # starting location.
+        # ====================================================
 
         else:
 
-            geo = maps_api.geocode(
+            origin_geo = {
+
+                "lat":
+                    MOCK_CURRENT_LOCATION[
+                        "lat"
+                    ],
+
+                "lon":
+                    MOCK_CURRENT_LOCATION[
+                        "lon"
+                    ],
+
+                "display_name":
+                    MOCK_CURRENT_LOCATION[
+                        "display_name"
+                    ]
+            }
+
+            origin = (
+                MOCK_CURRENT_LOCATION[
+                    "display_name"
+                ]
+            )
+
+
+        # ----------------------------------------------------
+        # Check origin
+        # ----------------------------------------------------
+
+        if not origin_geo:
+
+            return (
+                f"I couldn't find the starting "
+                f"location '{origin}'. "
+                f"Please try another place.",
+                None
+            )
+
+
+        # ----------------------------------------------------
+        # Find destination
+        # ----------------------------------------------------
+
+        destination_geo = (
+            maps_api.geocode(
                 destination
             )
-
-
-            if not geo:
-
-                return {
-                    "response": generate_response(
-                        "no_result"
-                    ),
-                    "route": None
-                }
-
-
-            route_data = maps_api.get_route(
-
-                MOCK_CURRENT_LOCATION["lat"],
-
-                MOCK_CURRENT_LOCATION["lon"],
-
-                geo["lat"],
-
-                geo["lon"]
-            )
-
-
-            if not route_data:
-
-                return {
-                    "response": generate_response(
-                        "no_result"
-                    ),
-                    "route": None
-                }
-
-
-            route = {
-
-                "distance_km":
-                    route_data["distance_km"],
-
-                "duration_min":
-                    route_data["duration_min"],
-
-                "route_points":
-                    route_data.get(
-                        "route_points"
-                    ),
-
-                "start_lat":
-                    MOCK_CURRENT_LOCATION["lat"],
-
-                "start_lon":
-                    MOCK_CURRENT_LOCATION["lon"],
-
-                "end_lat":
-                    geo["lat"],
-
-                "end_lon":
-                    geo["lon"],
-
-                "destination":
-                    destination.title()
-            }
-
-
-        # ----------------------------------------------------
-        # RESPONSE
-        # ----------------------------------------------------
-
-        response = generate_response(
-
-            "navigate",
-
-            {
-
-                "destination":
-                    destination.title(),
-
-                "distance_km":
-                    route["distance_km"],
-
-                "duration_min":
-                    route["duration_min"]
-            }
         )
 
 
-        return {
+        if not destination_geo:
 
-            "response": response,
+            return (
+                f"I couldn't find the destination "
+                f"'{destination}'. "
+                f"Please try another place.",
+                None
+            )
 
-            "route": route
-        }
+
+        # ====================================================
+        # MOCK MODE
+        # ====================================================
+
+        if self.mock_maps:
+
+            return (
+
+                (
+                    f"Directions from "
+                    f"{origin.title()} "
+                    f"to "
+                    f"{destination.title()}"
+                ),
+
+                {
+
+                    "distance_km":
+                        5.0,
+
+                    "duration_min":
+                        15,
+
+                    "route_points":
+                        [],
+
+                    "directions":
+                        [],
+
+                    "start_lat":
+                        origin_geo["lat"],
+
+                    "start_lon":
+                        origin_geo["lon"],
+
+                    "end_lat":
+                        destination_geo["lat"],
+
+                    "end_lon":
+                        destination_geo["lon"],
+
+                    "destination":
+                        destination.title(),
+
+                    "origin":
+                        origin.title()
+                }
+            )
+
+
+        # ====================================================
+        # REAL OSRM ROUTING
+        # ====================================================
+
+        route = maps_api.get_route(
+
+            origin_geo["lat"],
+
+            origin_geo["lon"],
+
+            destination_geo["lat"],
+
+            destination_geo["lon"]
+        )
+
+
+        if not route:
+
+            return (
+
+                "I couldn't calculate a route "
+                "between those locations. "
+                "Please try again.",
+
+                None
+            )
+
+
+        # ----------------------------------------------------
+        # Add coordinates
+        # ----------------------------------------------------
+
+        route["start_lat"] = (
+            origin_geo["lat"]
+        )
+
+        route["start_lon"] = (
+            origin_geo["lon"]
+        )
+
+        route["end_lat"] = (
+            destination_geo["lat"]
+        )
+
+        route["end_lon"] = (
+            destination_geo["lon"]
+        )
+
+        route["destination"] = (
+            destination.title()
+        )
+
+        route["origin"] = (
+            origin.title()
+        )
+
+
+        # ====================================================
+        # RESPONSE TEXT
+        # ====================================================
+
+        response = (
+
+            f"Directions from "
+            f"{origin.title()} "
+            f"to "
+            f"{destination.title()}. "
+            f"The distance is "
+            f"{route['distance_km']} "
+            f"kilometers and the estimated "
+            f"travel time is "
+            f"{route['duration_min']} minutes."
+        )
+
+
+        return response, route
 
 
     # ========================================================
-    # SEARCH NEARBY
+    # NEARBY SEARCH
     # ========================================================
 
     def handle_search_nearby(
@@ -321,12 +433,12 @@ class VoiceAssistantPipeline:
 
         if not place_type:
 
-            return {
-                "response": generate_response(
+            return (
+                generate_response(
                     "no_result"
                 ),
-                "route": None
-            }
+                None
+            )
 
 
         # ----------------------------------------------------
@@ -335,24 +447,32 @@ class VoiceAssistantPipeline:
 
         if self.mock_maps:
 
-            place = MOCK_NEARBY.get(
-                place_type
+            place = (
+                MOCK_NEARBY.get(
+                    place_type
+                )
             )
 
 
         # ----------------------------------------------------
-        # REAL MAPS
+        # REAL
         # ----------------------------------------------------
 
         else:
 
-            result = maps_api.find_nearby_place(
+            result = (
+                maps_api.find_nearby_place(
 
-                place_type,
+                    place_type,
 
-                MOCK_CURRENT_LOCATION["lat"],
+                    MOCK_CURRENT_LOCATION[
+                        "lat"
+                    ],
 
-                MOCK_CURRENT_LOCATION["lon"]
+                    MOCK_CURRENT_LOCATION[
+                        "lon"
+                    ]
+                )
             )
 
 
@@ -361,7 +481,9 @@ class VoiceAssistantPipeline:
                 place = {
 
                     "display_name":
-                        result["display_name"],
+                        result[
+                            "display_name"
+                        ],
 
                     "distance_km":
                         1.0
@@ -374,15 +496,14 @@ class VoiceAssistantPipeline:
 
         if not place:
 
-            return {
+            return (
 
-                "response":
-                    generate_response(
-                        "no_result"
-                    ),
+                generate_response(
+                    "no_result"
+                ),
 
-                "route": None
-            }
+                None
+            )
 
 
         response = generate_response(
@@ -398,20 +519,19 @@ class VoiceAssistantPipeline:
                     ),
 
                 "place_name":
-                    place["display_name"],
+                    place[
+                        "display_name"
+                    ],
 
                 "distance_km":
-                    place["distance_km"]
+                    place[
+                        "distance_km"
+                    ]
             }
         )
 
 
-        return {
-
-            "response": response,
-
-            "route": None
-        }
+        return response, None
 
 
     # ========================================================
@@ -435,21 +555,20 @@ class VoiceAssistantPipeline:
         )
 
 
-        return {
+        return (
 
-            "response":
-                generate_response(
+            generate_response(
 
-                    "traffic_info",
+                "traffic_info",
 
-                    {
-                        "traffic_status":
-                            status
-                    }
-                ),
+                {
+                    "traffic_status":
+                        status
+                }
+            ),
 
-            "route": None
-        }
+            None
+        )
 
 
     # ========================================================
@@ -461,7 +580,7 @@ class VoiceAssistantPipeline:
         entities
     ):
 
-        preference = entities.get(
+        pref = entities.get(
 
             "route_preference",
 
@@ -469,25 +588,24 @@ class VoiceAssistantPipeline:
         )
 
 
-        return {
+        return (
 
-            "response":
-                generate_response(
+            generate_response(
 
-                    "route_preference",
+                "route_preference",
 
-                    {
+                {
 
-                        "preference":
-                            preference.replace(
-                                "_",
-                                " "
-                            )
-                    }
-                ),
+                    "preference":
+                        pref.replace(
+                            "_",
+                            " "
+                        )
+                }
+            ),
 
-            "route": None
-        }
+            None
+        )
 
 
     # ========================================================
@@ -499,15 +617,14 @@ class VoiceAssistantPipeline:
         entities
     ):
 
-        return {
+        return (
 
-            "response":
-                generate_response(
-                    "cancel"
-                ),
+            generate_response(
+                "cancel"
+            ),
 
-            "route": None
-        }
+            None
+        )
 
 
     # ========================================================
@@ -519,24 +636,23 @@ class VoiceAssistantPipeline:
         entities
     ):
 
-        return {
+        return (
 
-            "response":
-                generate_response(
+            generate_response(
 
-                    "current_location",
+                "current_location",
 
-                    {
+                {
 
-                        "place_name":
-                            MOCK_CURRENT_LOCATION[
-                                "display_name"
-                            ]
-                    }
-                ),
+                    "place_name":
+                        MOCK_CURRENT_LOCATION[
+                            "display_name"
+                        ]
+                }
+            ),
 
-            "route": None
-        }
+            None
+        )
 
 
     # ========================================================
@@ -548,15 +664,14 @@ class VoiceAssistantPipeline:
         entities
     ):
 
-        return {
+        return (
 
-            "response":
-                generate_response(
-                    "unknown"
-                ),
+            generate_response(
+                "unknown"
+            ),
 
-            "route": None
-        }
+            None
+        )
 
 
     # ========================================================
@@ -566,10 +681,15 @@ class VoiceAssistantPipeline:
     def process(
         self,
         user_text: str
-    ):
+    ) -> dict:
+
+        """
+        Runs the complete NLP pipeline.
+        """
+
 
         # ----------------------------------------------------
-        # INTENT
+        # INTENT CLASSIFICATION
         # ----------------------------------------------------
 
         intent_result = (
@@ -579,14 +699,14 @@ class VoiceAssistantPipeline:
         )
 
 
-        intent = intent_result[
-            "intent"
-        ]
+        intent = (
+            intent_result["intent"]
+        )
 
 
-        confidence = intent_result[
-            "confidence"
-        ]
+        confidence = (
+            intent_result["confidence"]
+        )
 
 
         # ----------------------------------------------------
@@ -639,16 +759,18 @@ class VoiceAssistantPipeline:
 
 
         # ----------------------------------------------------
-        # EXECUTE HANDLER
+        # RUN HANDLER
         # ----------------------------------------------------
 
-        handler_result = handler(
-            entities
+        response_text, route = (
+            handler(
+                entities
+            )
         )
 
 
         # ----------------------------------------------------
-        # FINAL RESULT
+        # RETURN RESULT
         # ----------------------------------------------------
 
         return {
@@ -669,14 +791,10 @@ class VoiceAssistantPipeline:
                 entities,
 
             "response":
-                handler_result[
-                    "response"
-                ],
+                response_text,
 
             "route":
-                handler_result.get(
-                    "route"
-                )
+                route
         }
 
 
@@ -685,12 +803,17 @@ class VoiceAssistantPipeline:
 # ============================================================
 
 def run_cli(
-    use_microphone: bool = False
+    use_microphone=False
 ):
 
     from speech_io import listen, speak
 
-    pipeline = VoiceAssistantPipeline()
+
+    pipeline = (
+        VoiceAssistantPipeline(
+            mock_maps=False
+        )
+    )
 
 
     print(
@@ -698,7 +821,7 @@ def run_cli(
     )
 
     print(
-        "NLP Voice Assistant"
+        "NLP Voice Navigation Assistant"
     )
 
     print(
@@ -713,13 +836,16 @@ def run_cli(
     while True:
 
         user_text = listen(
+
             use_microphone=
                 use_microphone
         )
 
 
         if user_text.strip().lower() in (
+
             "quit",
+
             "exit"
         ):
 
@@ -730,36 +856,83 @@ def run_cli(
             break
 
 
-        result = pipeline.process(
-            user_text
+        result = (
+            pipeline.process(
+                user_text
+            )
         )
 
 
         print(
-            f"Intent: "
-            f"{result['intent']}"
+            "\nIntent:",
+            result["intent"]
         )
 
 
         print(
-            f"Confidence: "
-            f"{result['confidence']}"
+            "Confidence:",
+            result["confidence"]
         )
 
 
         print(
-            f"Entities: "
-            f"{result['entities']}"
+            "Entities:",
+            result["entities"]
         )
 
 
         print(
+            "Response:",
             result["response"]
         )
 
 
+        if result["route"]:
+
+            print(
+                "\nDistance:",
+                result["route"][
+                    "distance_km"
+                ],
+                "km"
+            )
+
+
+            print(
+                "Duration:",
+                result["route"][
+                    "duration_min"
+                ],
+                "minutes"
+            )
+
+
+            print(
+                "\nDirections:"
+            )
+
+
+            for i, step in enumerate(
+
+                result["route"][
+                    "directions"
+                ],
+
+                1
+            ):
+
+                print(
+
+                    f"{i}. "
+                    f"{step['instruction']} "
+                    f"({step['distance_m']} m)"
+                )
+
+
         speak(
+
             result["response"],
+
             use_audio=False
         )
 
