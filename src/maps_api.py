@@ -1,11 +1,9 @@
 """
-Maps integration using:
+Maps API integration.
 
-- Nominatim → finds coordinates
-- OSRM → calculates driving route
-- OSRM steps → turn-by-turn directions
-
-No API key required.
+Uses:
+- Nominatim (OpenStreetMap) -> place name to coordinates
+- OSRM -> actual driving route
 """
 
 import time
@@ -16,14 +14,14 @@ import requests
 # API URLs
 # ============================================================
 
-NOMINATIM_URL = (
-    "https://nominatim.openstreetmap.org/search"
-)
+NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 
-OSRM_URL = (
-    "https://router.project-osrm.org/route/v1/driving"
-)
+OSRM_URL = "https://router.project-osrm.org/route/v1/driving"
 
+
+# ============================================================
+# REQUEST HEADERS
+# ============================================================
 
 HEADERS = {
     "User-Agent": "NLP-Voice-Navigation-Assistant/1.0"
@@ -31,7 +29,7 @@ HEADERS = {
 
 
 # ============================================================
-# Nominatim rate limiting
+# Nominatim rate limiter
 # ============================================================
 
 _last_request_time = 0
@@ -41,9 +39,7 @@ def _rate_limit():
 
     global _last_request_time
 
-    elapsed = (
-        time.time() - _last_request_time
-    )
+    elapsed = time.time() - _last_request_time
 
     if elapsed < 1.1:
 
@@ -61,55 +57,46 @@ def _rate_limit():
 def geocode(place_name: str):
 
     """
-    Convert a place name into latitude/longitude.
+    Convert place name into latitude and longitude.
     """
 
     _rate_limit()
 
     params = {
-
         "q": place_name,
-
         "format": "json",
-
         "limit": 1
     }
-
 
     try:
 
         response = requests.get(
-
             NOMINATIM_URL,
-
             params=params,
-
             headers=HEADERS,
-
             timeout=15
         )
-
 
         response.raise_for_status()
 
         results = response.json()
 
-
         if not results:
-
             return None
 
+
+        result = results[0]
 
         return {
 
             "lat":
-                float(results[0]["lat"]),
+                float(result["lat"]),
 
             "lon":
-                float(results[0]["lon"]),
+                float(result["lon"]),
 
             "display_name":
-                results[0]["display_name"]
+                result["display_name"]
         }
 
 
@@ -123,7 +110,7 @@ def geocode(place_name: str):
 
 
 # ============================================================
-# ROUTING
+# GET ACTUAL DRIVING ROUTE
 # ============================================================
 
 def get_route(
@@ -134,27 +121,33 @@ def get_route(
 ):
 
     """
-    Get driving route from origin
-    to destination.
+    Get actual driving route from OSRM.
 
     Returns:
-
-    - distance
-    - duration
-    - route geometry
-    - turn-by-turn steps
+        distance
+        duration
+        route coordinates
     """
 
 
+    # --------------------------------------------------------
+    # OSRM URL
+    # --------------------------------------------------------
+
     url = (
-
         f"{OSRM_URL}/"
-
         f"{origin_lon},{origin_lat};"
-
         f"{dest_lon},{dest_lat}"
     )
 
+
+    # --------------------------------------------------------
+    # IMPORTANT
+    # overview = full
+    # geometries = geojson
+    #
+    # This gives us the complete road route.
+    # --------------------------------------------------------
 
     params = {
 
@@ -169,21 +162,30 @@ def get_route(
     try:
 
         response = requests.get(
-
             url,
-
             params=params,
-
             timeout=20
         )
-
 
         response.raise_for_status()
 
         data = response.json()
 
 
+        # ----------------------------------------------------
+        # Check OSRM response
+        # ----------------------------------------------------
+
         if data.get("code") != "Ok":
+
+            print(
+                "[OSRM] Route not found"
+            )
+
+            return None
+
+
+        if not data.get("routes"):
 
             return None
 
@@ -191,208 +193,150 @@ def get_route(
         route = data["routes"][0]
 
 
-        # ====================================================
-        # DISTANCE
-        # ====================================================
+        # ----------------------------------------------------
+        # Distance
+        # ----------------------------------------------------
 
         distance_km = round(
-
             route["distance"] / 1000,
-
             2
         )
 
 
-        # ====================================================
-        # DURATION
-        # ====================================================
+        # ----------------------------------------------------
+        # Duration
+        # ----------------------------------------------------
 
         duration_min = round(
-
             route["duration"] / 60,
-
             1
         )
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # ROUTE GEOMETRY
-        # ====================================================
+        # ----------------------------------------------------
 
-        coordinates = (
-
-            route
-            .get("geometry", {})
-            .get("coordinates", [])
+        geometry = route.get(
+            "geometry"
         )
 
 
-        route_points = [
+        if not geometry:
 
-            [lat, lon]
-
-            for lon, lat
-            in coordinates
-        ]
+            return None
 
 
-        # ====================================================
-        # TURN-BY-TURN DIRECTIONS
-        # ====================================================
-
-        directions = []
-
-
-        legs = route.get(
-            "legs",
+        coordinates = geometry.get(
+            "coordinates",
             []
         )
 
 
-        for leg in legs:
+        # ----------------------------------------------------
+        # OSRM gives:
+        #
+        # [longitude, latitude]
+        #
+        # Folium needs:
+        #
+        # [latitude, longitude]
+        # ----------------------------------------------------
 
-            steps = leg.get(
+        route_points = [
+
+            [
+                point[1],
+                point[0]
+            ]
+
+            for point in coordinates
+
+            if len(point) >= 2
+        ]
+
+
+        # ----------------------------------------------------
+        # TURN-BY-TURN STEPS
+        # ----------------------------------------------------
+
+        steps = []
+
+
+        for leg in route.get(
+            "legs",
+            []
+        ):
+
+            for step in leg.get(
                 "steps",
                 []
-            )
-
-
-            for step in steps:
+            ):
 
                 maneuver = step.get(
                     "maneuver",
                     {}
                 )
 
+                instruction_type = maneuver.get(
+                    "type",
+                    ""
+                )
+
+                modifier = maneuver.get(
+                    "modifier",
+                    ""
+                )
+
+                name = step.get(
+                    "name",
+                    ""
+                )
+
+                distance = round(
+                    step.get(
+                        "distance",
+                        0
+                    ) / 1000,
+                    2
+                )
+
 
                 instruction = (
-                    maneuver.get(
-                        "type",
-                        ""
-                    )
+                    f"{instruction_type}"
                 )
 
 
-                modifier = (
-                    maneuver.get(
-                        "modifier",
-                        ""
-                    )
-                )
+                if modifier:
 
-
-                road_name = (
-                    step.get(
-                        "name",
-                        ""
-                    )
-                )
-
-
-                # --------------------------------------------
-                # Create readable instruction
-                # --------------------------------------------
-
-                if instruction == "depart":
-
-                    text = (
-                        "Start your journey"
+                    instruction += (
+                        f" {modifier}"
                     )
 
 
-                elif instruction == "arrive":
+                if name:
 
-                    text = (
-                        "Arrive at your destination"
+                    instruction += (
+                        f" onto {name}"
                     )
 
 
-                elif instruction == "turn":
-
-                    if modifier:
-
-                        text = (
-                            f"Turn "
-                            f"{modifier}"
-                        )
-
-                    else:
-
-                        text = (
-                            "Turn"
-                        )
-
-
-                elif instruction == "continue":
-
-                    text = (
-                        "Continue straight"
-                    )
-
-
-                elif instruction == "roundabout":
-
-                    text = (
-                        "Enter the roundabout"
-                    )
-
-
-                elif instruction == "new name":
-
-                    text = (
-                        "Continue"
-                    )
-
-
-                else:
-
-                    text = (
-                        instruction
-                        .replace(
-                            "_",
-                            " "
-                        )
-                        .capitalize()
-                    )
-
-
-                # --------------------------------------------
-                # Add road name
-                # --------------------------------------------
-
-                if road_name:
-
-                    text += (
-                        f" on {road_name}"
-                    )
-
-
-                directions.append({
+                steps.append({
 
                     "instruction":
-                        text,
+                        instruction,
 
-                    "distance_m":
-                        round(
-                            step.get(
-                                "distance",
-                                0
-                            )
-                        ),
+                    "road":
+                        name,
 
-                    "duration_sec":
-                        round(
-                            step.get(
-                                "duration",
-                                0
-                            )
-                        )
+                    "distance_km":
+                        distance
                 })
 
 
-        # ====================================================
-        # FINAL RESULT
-        # ====================================================
+        # ----------------------------------------------------
+        # RETURN COMPLETE ROUTE
+        # ----------------------------------------------------
 
         return {
 
@@ -405,22 +349,22 @@ def get_route(
             "route_points":
                 route_points,
 
-            "directions":
-                directions
+            "steps":
+                steps
         }
 
 
     except requests.RequestException as e:
 
         print(
-            f"[Routing error] {e}"
+            f"[OSRM routing error] {e}"
         )
 
         return None
 
 
 # ============================================================
-# NEARBY SEARCH
+# FIND NEARBY PLACE
 # ============================================================
 
 def find_nearby_place(
@@ -430,7 +374,7 @@ def find_nearby_place(
 ):
 
     """
-    Search for a nearby place using Nominatim.
+    Find a nearby place using Nominatim.
     """
 
     _rate_limit()
@@ -445,7 +389,7 @@ def find_nearby_place(
             "atm",
 
         "fuel_station":
-            "fuel station",
+            "petrol pump",
 
         "pharmacy":
             "pharmacy",
@@ -466,34 +410,37 @@ def find_nearby_place(
             "supermarket",
 
         "charging_station":
-            "ev charging station"
+            "EV charging station"
     }
 
 
     query = query_map.get(
-
         place_type,
-
         place_type
     )
 
 
     params = {
 
-        "q": query,
+        "q":
+            query,
 
-        "format": "json",
+        "format":
+            "json",
 
-        "limit": 1,
+        "limit":
+            5,
 
-        "viewbox": (
-            f"{lon - 0.05},"
-            f"{lat + 0.05},"
-            f"{lon + 0.05},"
-            f"{lat - 0.05}"
-        ),
+        "viewbox":
+            (
+                f"{lon - 0.05},"
+                f"{lat + 0.05},"
+                f"{lon + 0.05},"
+                f"{lat - 0.05}"
+            ),
 
-        "bounded": 1
+        "bounded":
+            1
     }
 
 
@@ -521,22 +468,19 @@ def find_nearby_place(
             return None
 
 
+        result = results[0]
+
+
         return {
 
             "lat":
-                float(
-                    results[0]["lat"]
-                ),
+                float(result["lat"]),
 
             "lon":
-                float(
-                    results[0]["lon"]
-                ),
+                float(result["lon"]),
 
             "display_name":
-                results[0][
-                    "display_name"
-                ]
+                result["display_name"]
         }
 
 
@@ -556,53 +500,54 @@ def find_nearby_place(
 if __name__ == "__main__":
 
     print(
-        "Testing Vijayawada..."
+        "\nTesting geocoding..."
     )
 
-
-    vijayawada = geocode(
+    start = geocode(
         "Vijayawada, India"
     )
 
-
-    print(
-        "Vijayawada:",
-        vijayawada
-    )
-
-
-    print(
-        "Testing Guntur..."
-    )
-
-
-    guntur = geocode(
+    destination = geocode(
         "Guntur, India"
     )
 
 
     print(
-        "Guntur:",
-        guntur
+        "\nSTART:"
+    )
+
+    print(
+        start
     )
 
 
-    if vijayawada and guntur:
+    print(
+        "\nDESTINATION:"
+    )
+
+    print(
+        destination
+    )
+
+
+    if start and destination:
+
+        print(
+            "\nGetting driving route..."
+        )
 
         route = get_route(
 
-            vijayawada["lat"],
+            start["lat"],
+            start["lon"],
 
-            vijayawada["lon"],
-
-            guntur["lat"],
-
-            guntur["lon"]
+            destination["lat"],
+            destination["lon"]
         )
 
 
         print(
-            "\nRoute:"
+            "\nROUTE:"
         )
 
         print(
