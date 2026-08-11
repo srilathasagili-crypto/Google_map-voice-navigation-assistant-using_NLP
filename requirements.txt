@@ -7,3 +7,5 @@ SpeechRecognition
 pyttsx3
 gTTS
 streamlit
+folium
+streamlit-folium
